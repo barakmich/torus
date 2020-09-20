@@ -10,19 +10,19 @@ VERBOSE_2 := -v -x
 
 WHAT := torusd torusctl torusblk
 
-build: vendor
+build:
 	for target in $(WHAT); do \
 		$(BUILD_ENV_FLAGS) go build $(VERBOSE_$(V)) -o bin/$$target -ldflags "-X $(REPOPATH).Version=$(VERSION)" ./cmd/$$target; \
 	done
 
-test: tools/glide
-	go test --race $(shell ./tools/glide novendor)
+test:
+	go test --race ./...
 
-vet: tools/glide
-	go vet $(shell ./tools/glide novendor)
+vet:
+	go vet ./...
 
-fmt: tools/glide
-	go fmt $(shell ./tools/glide novendor)
+fmt:
+	go fmt ./...
 
 run:
 	./bin/torusd --etcd 127.0.0.1:2379 --debug --debug-init --peer-address http://127.0.0.1:40000
@@ -53,8 +53,8 @@ releasetar:
 	gzip release/$(VERSION)/torus_$(VERSION)_src.tar
 
 
-vendor: tools/glide
-	./tools/glide install
+vendor:
+	go mod vendor
 
 tools/glide:
 	@echo "Downloading glide"

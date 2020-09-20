@@ -23,6 +23,8 @@ require (
 	github.com/kardianos/osext v0.0.0-20151222153229-29ae4ffbc9a6
 	github.com/lpabon/godbc v0.1.2-0.20140613165803-9577782540c1
 	github.com/manucorporat/sse v0.0.0-20160126180136-ee05b128a739
+	github.com/mattn/go-colorable v0.1.7 // indirect
+	github.com/mattn/goreman v0.3.7 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1
 	github.com/mdlayher/aoe v0.0.0-20161107164028-f389bbabc496
 	github.com/mdlayher/ethernet v0.0.0-20150827222903-28018267bba4
@@ -38,9 +40,9 @@ require (
 	github.com/spf13/pflag v0.0.0-20160427162146-cb88ea77998c
 	golang.org/x/crypto v0.0.0-20160518162255-5bcd134fee4d
 	golang.org/x/net v0.0.0-20161116075034-4971afdc2f16
-	golang.org/x/sys v0.0.0-20160907145946-30de6d19a3bd
+	golang.org/x/sys v0.0.0-20200918174421-af09f7315aff
 	golang.org/x/time v0.0.0-20160202183820-a4bde1265759
 	google.golang.org/grpc v0.0.0-20160525224935-8213ee577a46
 	gopkg.in/go-playground/validator.v8 v8.15.1
-	gopkg.in/yaml.v2 v2.0.0-20160301204022-a83829b6f129
+	gopkg.in/yaml.v2 v2.3.0
 )

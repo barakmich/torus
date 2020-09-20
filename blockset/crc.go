@@ -79,6 +79,7 @@ func (b *crcBlockset) PutBlock(ctx context.Context, inode torus.INodeRef, i int,
 	crc := crc32.ChecksumIEEE(data)
 	if crc == b.emptyCrc {
 		ctx = context.WithValue(ctx, "isEmpty", true)
+		clog.Trace("Empty CRC")
 	}
 	err := b.sub.PutBlock(ctx, inode, i, data)
 	if err != nil {

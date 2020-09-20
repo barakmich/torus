@@ -137,11 +137,7 @@ func (f *BlockFile) Sync() error {
 		return nil
 	}
 	clog.Debugf("Syncing block volume: %v", f.vol.volume.Name)
-	err := f.File.SyncBlocks()
-	if err != nil {
-		return err
-	}
-	ref, err := f.File.SyncINode(f.inodeContext())
+	ref, err := f.File.SyncAllWrites()
 	if err != nil {
 		return err
 	}

@@ -37,7 +37,7 @@ var configCommand = &cobra.Command{
 }
 
 func init() {
-	configCommand.Flags().StringVarP(&etcdAddress, "etcd", "C", "127.0.0.1:2379", "Address for talking to etcd")
+	configCommand.Flags().StringVarP(&etcdAddress, "etcd", "C", "http://127.0.0.1:2379", "Address for talking to etcd")
 	configCommand.Flags().StringVarP(&etcdCertFile, "etcd-cert-file", "", "", "Certificate to use to authenticate against etcd")
 	configCommand.Flags().StringVarP(&etcdKeyFile, "etcd-key-file", "", "", "Key for Certificate")
 	configCommand.Flags().StringVarP(&etcdCAFile, "etcd-ca-file", "", "", "CA to authenticate etcd against")
