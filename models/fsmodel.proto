@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package fsmodels;
+package models;
 
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "torus.proto";
@@ -39,7 +39,7 @@ message Directory {
 
 message FileEntry {
   uint64 chain = 1;
-  string sympath = 2; 
+  string sympath = 2;
 }
 
 message FileChainSet {
