@@ -19,7 +19,7 @@ require (
 	github.com/gin-gonic/gin v0.0.0-20160525124545-f931d1ea80ae
 	github.com/godbus/dbus v4.0.1-0.20160506222550-32c6cc29c145+incompatible
 	github.com/gogo/protobuf v1.3.1
-	github.com/golang/protobuf v0.0.0-20160601151705-3b06fc7a4cad
+	github.com/golang/protobuf v1.3.3
 	github.com/inconshreveable/mousetrap v1.0.0
 	github.com/kardianos/osext v0.0.0-20151222153229-29ae4ffbc9a6
 	github.com/lpabon/godbc v0.1.2-0.20140613165803-9577782540c1
@@ -32,7 +32,7 @@ require (
 	github.com/mdlayher/raw v0.0.0-20160616223208-b730b008e228
 	github.com/pborman/uuid v0.0.0-20160216163710-c55201b03606
 	github.com/prometheus/client_golang v0.0.0-20160531091528-488edd04dc22
-	github.com/prometheus/client_model v0.0.0-20150212101744-fa8ad6fec335
+	github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4
 	github.com/prometheus/common v0.0.0-20160530185023-a3a8fe85f257
 	github.com/prometheus/procfs v0.0.0-20160411190841-abf152e5f3e9
 	github.com/ricochet2200/go-disk-usage v0.0.0-20150921141558-f0d1b743428f
@@ -43,7 +43,7 @@ require (
 	golang.org/x/net v0.0.0-20200226121028-0de0cce0169b
 	golang.org/x/sys v0.0.0-20200918174421-af09f7315aff
 	golang.org/x/time v0.0.0-20160202183820-a4bde1265759
-	google.golang.org/grpc v0.0.0-20160525224935-8213ee577a46
+	google.golang.org/grpc v1.32.0
 	gopkg.in/go-playground/validator.v8 v8.15.1
 	gopkg.in/yaml.v2 v2.3.0
 )
