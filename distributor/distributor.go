@@ -52,7 +52,7 @@ func newDistributor(srv *torus.Server, addr *url.URL) (*Distributor, error) {
 		if size < 100 {
 			size = 100
 		}
-		d.readCache = newCache(int(size))
+		d.readCache = newCache(int(size), int(gmd.BlockSize))
 	}
 
 	// Set up the rebalancer

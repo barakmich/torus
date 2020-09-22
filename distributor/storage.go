@@ -17,10 +17,10 @@ func (d *Distributor) GetBlock(ctx context.Context, i torus.BlockRef) ([]byte, e
 	d.mut.RLock()
 	defer d.mut.RUnlock()
 	promDistBlockRequests.Inc()
-	bcache, ok := d.readCache.Get(string(i.ToBytes()))
+	bcache, ok := d.readCache.Get(i.ToHexString())
 	if ok {
 		promDistBlockCacheHits.Inc()
-		return bcache.([]byte), nil
+		return bcache, nil
 	}
 	peers, err := d.ring.GetPeers(i)
 	if err != nil {
@@ -37,6 +37,7 @@ func (d *Distributor) GetBlock(ctx context.Context, i torus.BlockRef) ([]byte, e
 			b, err := d.blocks.GetBlock(ctx, i)
 			if err == nil {
 				promDistBlockLocalHits.Inc()
+				d.readCache.Put(i.ToHexString(), b)
 				return b, nil
 			}
 			promDistBlockLocalFailures.Inc()
@@ -59,6 +60,8 @@ func (d *Distributor) GetBlock(ctx context.Context, i torus.BlockRef) ([]byte, e
 		// We completely failed!
 		promDistBlockFailures.Inc()
 		clog.Errorf("no peers for block %s: %v", i, err)
+	} else {
+		d.readCache.Put(i.ToHexString(), blk)
 	}
 	return blk, err
 }
@@ -153,14 +156,7 @@ func (d *Distributor) readSpread(ctx context.Context, i torus.BlockRef, peers to
 }
 
 func (d *Distributor) readFromPeer(ctx context.Context, i torus.BlockRef, peer string) ([]byte, error) {
-	blk, err := d.client.GetBlock(ctx, peer, i)
-	// If we're successful, store that.
-	if err == nil {
-		d.readCache.Put(string(i.ToBytes()), blk)
-		promDistBlockPeerHits.WithLabelValues(peer).Inc()
-		return blk, nil
-	}
-	return nil, err
+	return d.client.GetBlock(ctx, peer, i)
 }
 
 func (d *Distributor) getWriteFromServer() torus.WriteLevel {
@@ -181,7 +177,7 @@ func (d *Distributor) WriteBlock(ctx context.Context, i torus.BlockRef, data []b
 	if len(peers.Peers) == 0 {
 		return ErrNoPeersBlock
 	}
-	d.readCache.Put(string(i.ToBytes()), data)
+	d.readCache.Put(i.ToHexString(), data)
 	switch d.getWriteFromServer() {
 	case torus.WriteLocal:
 		err = d.blocks.WriteBlock(ctx, i, data)
@@ -238,7 +234,7 @@ func (d *Distributor) WriteBlock(ctx context.Context, i torus.BlockRef, data []b
 }
 
 func (d *Distributor) WriteBuf(ctx context.Context, i torus.BlockRef) ([]byte, error) {
-	return d.blocks.WriteBuf(ctx, i)
+	panic("unimplemented -- writebuf on distributor")
 }
 
 func (d *Distributor) HasBlock(ctx context.Context, i torus.BlockRef) (bool, error) {

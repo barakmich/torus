@@ -41,7 +41,7 @@ func ConnectAndServe(f *block.BlockFile, name string, closer chan bool) error {
 					ProductID:  "TorusBlk",
 					ProductRev: "0001",
 				},
-			}, 1),
+			}, 2),
 	}
 	d, err := tcmu.OpenTCMUDevice(devPath, h)
 	if err != nil {

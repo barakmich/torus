@@ -149,6 +149,11 @@ func (b BlockRef) ToProto() *models.BlockRef {
 	}
 }
 
+func (b BlockRef) ToHexString() string {
+	bytes := b.ToBytes()
+	return fmt.Sprintf("%x", bytes)
+}
+
 func BlockFromProto(p *models.BlockRef) BlockRef {
 	return BlockRef{
 		INodeRef: INodeRef{
