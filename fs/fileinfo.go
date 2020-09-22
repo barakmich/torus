@@ -8,7 +8,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/coreos/torus/models"
-	"github.com/tgruben/roaring"
+	"github.com/RoaringBitmap/roaring"
 )
 
 type FileInfo struct {

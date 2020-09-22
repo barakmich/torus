@@ -6,7 +6,7 @@ import (
 	"github.com/coreos/torus"
 	"github.com/coreos/torus/models"
 	"github.com/coreos/pkg/capnslog"
-	"github.com/tgruben/roaring"
+	"github.com/RoaringBitmap/roaring"
 )
 
 var clog = capnslog.NewPackageLogger("github.com/coreos/torus", "fs")

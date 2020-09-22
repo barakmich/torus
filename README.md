@@ -5,9 +5,9 @@
 
 ## Torus Overview
 
-Torus is an open source project for distributed storage coordinated through [etcd](https://github.com/coreos/etcd).
+Torus is an open source project for distributed storage coordinated through [etcd](https://github.com/etcd-io/etcd).
 
-Torus provides a resource pool and basic file primitives from a set of daemons running atop multiple nodes. These primitives are made consistent by being append-only and coordinated by [etcd](https://github.com/coreos/etcd). From these primitives, a Torus server can support multiple types of volumes, the semantics of which can be broken into subprojects. It ships with a simple block-device volume plugin, but is extensible to more.
+Torus provides a resource pool and basic file primitives from a set of daemons running atop multiple nodes. These primitives are made consistent by being append-only and coordinated by [etcd](https://github.com/etcd-io/etcd). From these primitives, a Torus server can support multiple types of volumes, the semantics of which can be broken into subprojects. It ships with a simple block-device volume plugin, but is extensible to more.
 
 ![Quick-glance overview](Documentation/torus-overview.png)
 

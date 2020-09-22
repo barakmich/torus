@@ -5,7 +5,7 @@ import (
 
 	"github.com/coreos/torus"
 	"github.com/coreos/torus/models"
-	"github.com/tgruben/roaring"
+	"github.com/RoaringBitmap/roaring"
 )
 
 // TODO(barakmich): This should really be based on truly dead ones

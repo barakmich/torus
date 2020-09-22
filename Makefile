@@ -30,11 +30,14 @@ run:
 clean:
 	rm -rf ./local-cluster ./bin/torus*
 
-cleanall: clean
-	rm -rf /tmp/etcd bin tools vendor
+cleanall: clean cleanetcd
+	rm -rf bin tools vendor
 
 etcdrun:
 	./local/etcd/etcd --data-dir /tmp/etcd
+
+cleanetcd:
+	rm -rf /tmp/etcd
 
 run3:
 	goreman start

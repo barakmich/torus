@@ -21,7 +21,7 @@ This will create the binaries `torusd`, `torusctl` and `torusblk` in the "bin" d
 On first build Torus will install and use [glide](https://github.com/Masterminds/glide) locally to download its dependenices.
 
 ### 1) Get etcd
-You need a *v3.0* or higher [etcd](https://github.com/coreos/etcd) instance, as torus uses the v3 API natively and uses the latest client. You might try [etcd v3.0.0-beta.0](https://github.com/coreos/etcd/releases/tag/v3.0.0-beta.0). 
+You need a *v3.0* or higher [etcd](https://github.com/etcd-io/etcd) instance, as torus uses the v3 API natively and uses the latest client. You might try [etcd v3.0.0-beta.0](https://github.com/etcd-io/etcd/releases/tag/v3.0.0-beta.0). 
 
 #### Running etcd manually
 To run a single node cluster locally:
@@ -44,7 +44,7 @@ $ rkt run coreos.com/etcd:v3.0.0-beta.0 \
 $ export ETCD_IP=$(rkt l --full=true --no-legend=true | grep 'etcd.*running' | cut -f8 | cut -d'=' -f2)
 ```
 
-[Clustering etcd for high availability](https://github.com/coreos/etcd/blob/master/Documentation/op-guide/clustering.md) and setting up a production etcd are covered by the etcd team.
+[Clustering etcd for high availability](https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/clustering.md) and setting up a production etcd are covered by the etcd team.
 
 ### 2) init
 

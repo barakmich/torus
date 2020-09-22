@@ -10,7 +10,8 @@ require (
 	github.com/barakmich/mmap-go v0.0.0-20160510231039-c4bd255520e5
 	github.com/beorn7/perks v0.0.0-20160229213445-3ac7bf7a47d1
 	github.com/cloudfoundry-incubator/candiedyaml v0.0.0-20160429080125-99c3df83b515
-	github.com/coreos/etcd v3.0.0-beta.0.0.20160527184207-d8f325dabf42+incompatible
+	github.com/coreos/etcd v3.3.25+incompatible
+	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd v0.0.0-20160527140244-4484981625c1
 	github.com/coreos/go-tcmu v0.0.0-20160831184627-a6fc46a3b7d2
 	github.com/coreos/pkg v0.0.0-20160530111557-7f080b6c11ac
@@ -20,6 +21,7 @@ require (
 	github.com/godbus/dbus v4.0.1-0.20160506222550-32c6cc29c145+incompatible
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.3.3
+	github.com/google/uuid v1.1.2 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0
 	github.com/kardianos/osext v0.0.0-20151222153229-29ae4ffbc9a6
 	github.com/lpabon/godbc v0.1.2-0.20140613165803-9577782540c1
@@ -39,11 +41,14 @@ require (
 	github.com/serialx/hashring v0.0.0-20160507062712-75d57fa264ad
 	github.com/spf13/cobra v0.0.0-20160517171929-f36824430130
 	github.com/spf13/pflag v0.0.0-20160427162146-cb88ea77998c
+	go.uber.org/zap v1.16.0 // indirect
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
 	golang.org/x/net v0.0.0-20200226121028-0de0cce0169b
 	golang.org/x/sys v0.0.0-20200918174421-af09f7315aff
 	golang.org/x/time v0.0.0-20160202183820-a4bde1265759
-	google.golang.org/grpc v1.32.0
+	google.golang.org/grpc v1.29.1
 	gopkg.in/go-playground/validator.v8 v8.15.1
 	gopkg.in/yaml.v2 v2.3.0
 )
+
+replace google.golang.org/grpc => google.golang.org/grpc v1.26.0

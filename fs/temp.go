@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/coreos/torus/models"
-	"github.com/tgruben/roaring"
+	"github.com/RoaringBitmap/roaring"
 )
 
 func (t *Client) Mkdir(p torus.Path, md *models.Metadata) error {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/coreos/torus/models"
 	"github.com/coreos/pkg/capnslog"
-	"github.com/tgruben/roaring"
+	"github.com/RoaringBitmap/roaring"
 )
 
 const (
