@@ -11,7 +11,7 @@ import (
 	"github.com/coreos/torus/models"
 )
 
-func (s *server) Rename(from, to torus.Path) error {
+func (s *FSServer) Rename(from, to torus.Path) error {
 	if from.Volume != to.Volume {
 		return torus.ErrInvalid
 	}
@@ -50,7 +50,7 @@ func (s *server) Rename(from, to torus.Path) error {
 	})
 }
 
-func (s *server) Link(p torus.Path, new torus.Path) error {
+func (s *FSServer) Link(p torus.Path, new torus.Path) error {
 	if p.Volume != new.Volume {
 		return torus.ErrInvalid
 	}
@@ -79,7 +79,7 @@ func (s *server) Link(p torus.Path, new torus.Path) error {
 	})
 }
 
-func (s *server) Symlink(to string, new torus.Path) error {
+func (s *FSServer) Symlink(to string, new torus.Path) error {
 	_, ent, err := s.FileEntryForPath(new)
 	if err != nil && err != os.ErrNotExist {
 		return err
@@ -95,7 +95,7 @@ func (s *server) Symlink(to string, new torus.Path) error {
 	})
 }
 
-func (s *server) removeFile(p torus.Path) error {
+func (s *FSServer) removeFile(p torus.Path) error {
 	clog.Debugf("removing file %s", p)
 	vol, ent, err := s.FileEntryForPath(p)
 	if err != nil {

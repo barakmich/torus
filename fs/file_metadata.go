@@ -7,7 +7,7 @@ import (
 	"github.com/coreos/torus/models"
 )
 
-func (s *server) modFileMetadata(p torus.Path, f func(inode *models.INode) error) error {
+func (s *FSServer) modFileMetadata(p torus.Path, f func(inode *models.INode) error) error {
 	newINodeID, err := s.mds.CommitINodeIndex(p.Volume)
 	if err != nil {
 		return err
@@ -29,7 +29,7 @@ func (s *server) modFileMetadata(p torus.Path, f func(inode *models.INode) error
 	return err
 }
 
-func (s *server) modDirMetadata(p torus.Path, f func(md *models.Metadata) error) error {
+func (s *FSServer) modDirMetadata(p torus.Path, f func(md *models.Metadata) error) error {
 	dir, _, err := s.fsMDS().Getdir(p)
 	if err != nil {
 		return err
@@ -41,7 +41,7 @@ func (s *server) modDirMetadata(p torus.Path, f func(md *models.Metadata) error)
 	return s.fsMDS().ChangeDirMetadata(p, dir.Metadata)
 }
 
-func (s *server) Chmod(name torus.Path, mode os.FileMode) error {
+func (s *FSServer) Chmod(name torus.Path, mode os.FileMode) error {
 	if name.IsDir() {
 		return s.modDirMetadata(name, func(md *models.Metadata) error {
 			md.Mode = uint32(mode)
@@ -66,7 +66,7 @@ func (s *server) Chmod(name torus.Path, mode os.FileMode) error {
 	})
 }
 
-func (s *server) Chown(name torus.Path, uid, gid int) error {
+func (s *FSServer) Chown(name torus.Path, uid, gid int) error {
 	if name.IsDir() {
 		return s.modDirMetadata(name, func(md *models.Metadata) error {
 			if uid >= 0 {

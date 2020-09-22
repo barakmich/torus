@@ -39,7 +39,7 @@ type Volume struct {
 	openFileChains map[uint64]openFileCount
 }
 
-func (s *server) FileEntryForPath(p torus.Path) (torus.VolumeID, *models.FileEntry, error) {
+func (s *FSServer) FileEntryForPath(p torus.Path) (torus.VolumeID, *models.FileEntry, error) {
 	promOps.WithLabelValues("file-entry-for-path").Inc()
 	dirname, filename := path.Split(p.Path)
 	dirpath := torus.Path{p.Volume, dirname}
@@ -60,7 +60,7 @@ func (s *server) FileEntryForPath(p torus.Path) (torus.VolumeID, *models.FileEnt
 	return torus.VolumeID(vol.Id), ent, nil
 }
 
-func (s *server) inodeRefForPath(p torus.Path) (torus.INodeRef, error) {
+func (s *FSServer) inodeRefForPath(p torus.Path) (torus.INodeRef, error) {
 	vol, ent, err := s.FileEntryForPath(p)
 	if err != nil {
 		return torus.INodeRef{}, err

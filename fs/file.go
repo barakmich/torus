@@ -3,6 +3,7 @@ package fs
 import (
 	"os"
 
+	"github.com/coreos/torus"
 	"github.com/coreos/torus/blockset"
 	"github.com/coreos/torus/models"
 	"github.com/tgruben/roaring"

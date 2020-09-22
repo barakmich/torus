@@ -65,7 +65,7 @@ func (fi FileInfo) Sys() interface{} {
 	return fi
 }
 
-func (s *server) Lstat(path torus.Path) (os.FileInfo, error) {
+func (s *FSServer) Lstat(path torus.Path) (os.FileInfo, error) {
 	promOps.WithLabelValues("lstat").Inc()
 	s.mut.RLock()
 	defer s.mut.RUnlock()
@@ -118,7 +118,7 @@ func (s *server) Lstat(path torus.Path) (os.FileInfo, error) {
 	}, nil
 }
 
-func (s *server) Readdir(path torus.Path) ([]torus.Path, error) {
+func (s *FSServer) Readdir(path torus.Path) ([]torus.Path, error) {
 	promOps.WithLabelValues("readdir").Inc()
 	if !path.IsDir() {
 		return nil, errors.New("ENOTDIR")
@@ -135,7 +135,7 @@ func (s *server) Readdir(path torus.Path) ([]torus.Path, error) {
 	for filename := range dir.Files {
 		childPath, ok := path.Child(filename)
 		if !ok {
-			return nil, errors.New("server: entry path is not a directory")
+			return nil, errors.New("FSServer: entry path is not a directory")
 		}
 
 		entries = append(entries, childPath)
@@ -144,14 +144,14 @@ func (s *server) Readdir(path torus.Path) ([]torus.Path, error) {
 	return entries, nil
 }
 
-func (s *server) Mkdir(path torus.Path, md *models.Metadata) error {
+func (s *FSServer) Mkdir(path torus.Path, md *models.Metadata) error {
 	promOps.WithLabelValues("mkdir").Inc()
 	if !path.IsDir() {
 		return os.ErrInvalid
 	}
 	return s.fsMDS().Mkdir(path, md)
 }
-func (s *server) CreateFSVolume(vol string) error {
+func (s *FSServer) CreateFSVolume(vol string) error {
 	v := &models.Volume{
 		Name: vol,
 		Type: models.Volume_FILE,
@@ -163,7 +163,7 @@ func (s *server) CreateFSVolume(vol string) error {
 	return err
 }
 
-func (s *server) incRef(vol string, bm *roaring.Bitmap) {
+func (s *FSServer) incRef(vol string, bm *roaring.Bitmap) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 	if bm.GetCardinality() == 0 {
@@ -184,7 +184,7 @@ func (s *server) incRef(vol string, bm *roaring.Bitmap) {
 	}
 }
 
-func (s *server) decRef(vol string, bm *roaring.Bitmap) {
+func (s *FSServer) decRef(vol string, bm *roaring.Bitmap) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 	it := bm.Iterator()
@@ -192,7 +192,7 @@ func (s *server) decRef(vol string, bm *roaring.Bitmap) {
 		id := torus.INodeID(it.Next())
 		v, ok := s.openINodeRefs[vol][id]
 		if !ok {
-			panic("server: double remove of an inode reference")
+			panic("FSServer: double remove of an inode reference")
 		} else {
 			v--
 			if v == 0 {
@@ -207,7 +207,7 @@ func (s *server) decRef(vol string, bm *roaring.Bitmap) {
 	}
 }
 
-func (s *server) getBitmap(vol string) (*roaring.Bitmap, bool) {
+func (s *FSServer) getBitmap(vol string) (*roaring.Bitmap, bool) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 	if _, ok := s.openINodeRefs[vol]; !ok {
@@ -220,7 +220,7 @@ func (s *server) getBitmap(vol string) (*roaring.Bitmap, bool) {
 	return out, true
 }
 
-func (s *server) Remove(path torus.Path) error {
+func (s *FSServer) Remove(path torus.Path) error {
 	promOps.WithLabelValues("remove").Inc()
 	if path.IsDir() {
 		return s.removeDir(path)
@@ -229,7 +229,7 @@ func (s *server) Remove(path torus.Path) error {
 }
 
 // TODO(barakmich): Split into two functions, one for chain ID and one for path.
-func (s *server) updateINodeChain(ctx context.Context, p torus.Path, modFunc func(oldINode *models.INode, vol torus.VolumeID) (*models.INode, torus.INodeRef, error)) (*models.INode, torus.INodeRef, error) {
+func (s *FSServer) updateINodeChain(ctx context.Context, p torus.Path, modFunc func(oldINode *models.INode, vol torus.VolumeID) (*models.INode, torus.INodeRef, error)) (*models.INode, torus.INodeRef, error) {
 	notExist := false
 	vol, entry, err := s.FileEntryForPath(p)
 	clog.Tracef("vol: %v, entry, %v, err %s", vol, entry, err)
@@ -281,11 +281,11 @@ func (s *server) updateINodeChain(ctx context.Context, p torus.Path, modFunc fun
 	}
 }
 
-func (s *server) removeDir(path torus.Path) error {
+func (s *FSServer) removeDir(path torus.Path) error {
 	return s.fsMDS().Rmdir(path)
 }
 
-func (s *server) addOpenFile(chainID uint64, fh *fileHandle) {
+func (s *FSServer) addOpenFile(chainID uint64, fh *fileHandle) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 	if v, ok := s.openFileChains[chainID]; ok {
@@ -300,7 +300,7 @@ func (s *server) addOpenFile(chainID uint64, fh *fileHandle) {
 	clog.Tracef("addOpenFile %#v", s.openFileChains)
 }
 
-func (s *server) getOpenFile(chainID uint64) (fh *fileHandle) {
+func (s *FSServer) getOpenFile(chainID uint64) (fh *fileHandle) {
 	if v, ok := s.openFileChains[chainID]; ok {
 		clog.Tracef("got open file %v", s.openFileChains)
 		return v.fh
@@ -309,7 +309,7 @@ func (s *server) getOpenFile(chainID uint64) (fh *fileHandle) {
 	return nil
 }
 
-func (s *server) removeOpenFile(chainID uint64) {
+func (s *FSServer) removeOpenFile(chainID uint64) {
 	s.mut.Lock()
 	v, ok := s.openFileChains[chainID]
 	if !ok {

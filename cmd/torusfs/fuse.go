@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	torusfuse "github.com/coreos/torus/server/fuse"
+	torusfuse "github.com/coreos/torus/fs/fuse"
 )
 
 var (

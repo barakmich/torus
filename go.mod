@@ -3,6 +3,7 @@ module github.com/coreos/torus
 go 1.15
 
 require (
+	bazil.org/fuse v0.0.0-20200524192727-fb710f7dfd05
 	github.com/DeanThompson/ginpprof v0.0.0-20151223020339-18e555cdf1a9
 	github.com/RoaringBitmap/roaring v0.2.5
 	github.com/Sirupsen/logrus v0.10.1-0.20160829202321-3ec0642a7fb6
@@ -17,7 +18,7 @@ require (
 	github.com/ghodss/yaml v0.0.0-20160503190739-e8e0db901617
 	github.com/gin-gonic/gin v0.0.0-20160525124545-f931d1ea80ae
 	github.com/godbus/dbus v4.0.1-0.20160506222550-32c6cc29c145+incompatible
-	github.com/gogo/protobuf v0.0.0-20160531113855-7883e1468d48
+	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v0.0.0-20160601151705-3b06fc7a4cad
 	github.com/inconshreveable/mousetrap v1.0.0
 	github.com/kardianos/osext v0.0.0-20151222153229-29ae4ffbc9a6
@@ -38,8 +39,8 @@ require (
 	github.com/serialx/hashring v0.0.0-20160507062712-75d57fa264ad
 	github.com/spf13/cobra v0.0.0-20160517171929-f36824430130
 	github.com/spf13/pflag v0.0.0-20160427162146-cb88ea77998c
-	golang.org/x/crypto v0.0.0-20160518162255-5bcd134fee4d
-	golang.org/x/net v0.0.0-20161116075034-4971afdc2f16
+	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
+	golang.org/x/net v0.0.0-20200226121028-0de0cce0169b
 	golang.org/x/sys v0.0.0-20200918174421-af09f7315aff
 	golang.org/x/time v0.0.0-20160202183820-a4bde1265759
 	google.golang.org/grpc v0.0.0-20160525224935-8213ee577a46
