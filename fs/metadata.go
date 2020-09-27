@@ -3,15 +3,15 @@ package fs
 import (
 	"errors"
 
+	"github.com/RoaringBitmap/roaring"
+	"github.com/coreos/pkg/capnslog"
 	"github.com/coreos/torus"
 	"github.com/coreos/torus/models"
-	"github.com/coreos/pkg/capnslog"
-	"github.com/RoaringBitmap/roaring"
 )
 
 var clog = capnslog.NewPackageLogger("github.com/coreos/torus", "fs")
 
-type fsMetadata interface {
+type FsMetadataService interface {
 	torus.MetadataService
 
 	Mkdir(path Path, dir *models.Metadata) error
@@ -38,7 +38,7 @@ func CreateFSVolume(mds torus.MetadataService, name string) error {
 	panic("unimplemented -- only works with etcd metadata")
 }
 
-func createFSMetadata(mds torus.MetadataService, vid torus.VolumeID) (fsMetadata, error) {
+func createFSMetadata(mds torus.MetadataService, vid torus.VolumeID) (FSMetadataService, error) {
 	switch mds.Kind() {
 	case torus.EtcdMetadata:
 		return createFSEtcdMetadata(mds, vid)

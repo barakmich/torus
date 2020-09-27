@@ -63,13 +63,13 @@ type File struct {
 	mut      sync.RWMutex
 	srv      *Server
 	blkSize  int64
-	offset   int64
+	Offset   int64
 	ReadOnly bool
 
 	// file metadata
-	volume   *models.Volume
-	inode    *models.INode
-	blocks   Blockset
+	Volume   *models.Volume
+	INode    *models.INode
+	Blocks   Blockset
 	replaces uint64
 	changed  map[string]bool
 	cache    fileCache
@@ -90,10 +90,10 @@ func (s *Server) CreateFile(volume *models.Volume, inode *models.INode, blocks B
 	md := s.MDS.GlobalMetadata()
 	clog.Tracef("Creating File For Inode %d:%d", inode.Volume, inode.INode)
 	return &File{
-		volume:  volume,
-		inode:   inode,
+		Volume:  volume,
+		INode:   inode,
 		srv:     s,
-		blocks:  blocks,
+		Blocks:  blocks,
 		blkSize: int64(md.BlockSize),
 		cache:   newSingleBlockCache(blocks, md.BlockSize),
 	}, nil
@@ -106,15 +106,15 @@ func (f *File) openWrite() error {
 	if f.writeOpen {
 		return nil
 	}
-	vid := VolumeID(f.volume.Id)
+	vid := VolumeID(f.Volume.Id)
 	newINode, err := f.srv.MDS.CommitINodeIndex(vid)
 	if err != nil {
 		return err
 	}
 	f.writeINodeRef = NewINodeRef(VolumeID(vid), newINode)
-	if f.inode != nil {
-		f.replaces = f.inode.INode
-		f.inode.INode = uint64(newINode)
+	if f.INode != nil {
+		f.replaces = f.INode.INode
+		f.INode.INode = uint64(newINode)
 	}
 	f.writeOpen = true
 	f.cache.newINode(f.writeINodeRef)
@@ -130,8 +130,8 @@ func (f *File) getContext() context.Context {
 }
 
 func (f *File) Write(b []byte) (n int, err error) {
-	n, err = f.WriteAt(b, f.offset)
-	f.offset += int64(n)
+	n, err = f.WriteAt(b, f.Offset)
+	f.Offset += int64(n)
 	return
 }
 
@@ -149,21 +149,21 @@ func (f *File) WriteAt(b []byte, off int64) (n int, err error) {
 	toWrite := len(b)
 
 	defer func() {
-		if off > int64(f.inode.Filesize) {
+		if off > int64(f.INode.Filesize) {
 			clog.Tracef("updating filesize: %d", off)
-			f.inode.Filesize = uint64(off)
+			f.INode.Filesize = uint64(off)
 		}
 	}()
 
 	// Write the front matter, which may dangle from a byte offset
 	blkIndex := int(off / f.blkSize)
 
-	if f.blocks.Length()+1 < blkIndex {
+	if f.Blocks.Length()+1 < blkIndex {
 		if clog.LevelAt(capnslog.DEBUG) {
 			clog.Debug("begin write: offset ", off, " size ", len(b))
-			clog.Debug("end of file ", f.blocks.Length(), " blkIndex ", blkIndex)
+			clog.Debug("end of file ", f.Blocks.Length(), " blkIndex ", blkIndex)
 		}
-		promFileWrittenBytes.WithLabelValues(f.volume.Name).Add(float64(n))
+		promFileWrittenBytes.WithLabelValues(f.Volume.Name).Add(float64(n))
 		err := f.Truncate(off)
 		if err != nil {
 			return n, err
@@ -182,7 +182,7 @@ func (f *File) WriteAt(b []byte, off int64) (n int, err error) {
 		if err != nil {
 			return n, err
 		} else if wrote != frontlen {
-			promFileWrittenBytes.WithLabelValues(f.volume.Name).Add(float64(n))
+			promFileWrittenBytes.WithLabelValues(f.Volume.Name).Add(float64(n))
 			return n, errors.New("Couldn't write all of the first block at the offset")
 		}
 		b = b[frontlen:]
@@ -193,7 +193,7 @@ func (f *File) WriteAt(b []byte, off int64) (n int, err error) {
 	toWrite = len(b)
 	if toWrite == 0 {
 		// We're done
-		promFileWrittenBytes.WithLabelValues(f.volume.Name).Add(float64(n))
+		promFileWrittenBytes.WithLabelValues(f.Volume.Name).Add(float64(n))
 		return n, nil
 	}
 
@@ -208,9 +208,9 @@ func (f *File) WriteAt(b []byte, off int64) (n int, err error) {
 			clog.Tracef("bulk writing block at index %d, inoderef %s", blkIndex, f.writeINodeRef)
 		}
 		start := time.Now()
-		err = f.blocks.PutBlock(f.getContext(), f.writeINodeRef, blkIndex, b[:f.blkSize])
+		err = f.Blocks.PutBlock(f.getContext(), f.writeINodeRef, blkIndex, b[:f.blkSize])
 		if err != nil {
-			promFileWrittenBytes.WithLabelValues(f.volume.Name).Add(float64(n))
+			promFileWrittenBytes.WithLabelValues(f.Volume.Name).Add(float64(n))
 			return n, err
 		}
 		delta := time.Now().Sub(start)
@@ -223,7 +223,7 @@ func (f *File) WriteAt(b []byte, off int64) (n int, err error) {
 
 	if toWrite == 0 {
 		// We're done
-		promFileWrittenBytes.WithLabelValues(f.volume.Name).Add(float64(n))
+		promFileWrittenBytes.WithLabelValues(f.Volume.Name).Add(float64(n))
 		return n, nil
 	}
 
@@ -237,21 +237,21 @@ func (f *File) WriteAt(b []byte, off int64) (n int, err error) {
 		clog.Tracef("tail writing block at index %d, inoderef %s", blkIndex, f.writeINodeRef)
 	}
 	if err != nil {
-		promFileWrittenBytes.WithLabelValues(f.volume.Name).Add(float64(n))
+		promFileWrittenBytes.WithLabelValues(f.Volume.Name).Add(float64(n))
 		return n, err
 	} else if wrote != toWrite {
-		promFileWrittenBytes.WithLabelValues(f.volume.Name).Add(float64(n))
+		promFileWrittenBytes.WithLabelValues(f.Volume.Name).Add(float64(n))
 		return n, errors.New("Couldn't write all of the last block")
 	}
 	n += wrote
 	off += int64(wrote)
-	promFileWrittenBytes.WithLabelValues(f.volume.Name).Add(float64(n))
+	promFileWrittenBytes.WithLabelValues(f.Volume.Name).Add(float64(n))
 	return n, nil
 }
 
 func (f *File) Read(b []byte) (n int, err error) {
-	n, err = f.ReadAt(b, f.offset)
-	f.offset += int64(n)
+	n, err = f.ReadAt(b, f.Offset)
+	f.Offset += int64(n)
 	return
 }
 
@@ -263,8 +263,8 @@ func (f *File) ReadAt(b []byte, off int64) (n int, ferr error) {
 		clog.Trace("begin read: offset ", off, " size ", toRead)
 	}
 	n = 0
-	if int64(toRead)+off > int64(f.inode.Filesize) {
-		toRead = int(int64(f.inode.Filesize) - off)
+	if int64(toRead)+off > int64(f.INode.Filesize) {
+		toRead = int(int64(f.INode.Filesize) - off)
 		ferr = io.EOF
 		clog.Tracef("read is longer than file")
 	}
@@ -296,9 +296,9 @@ func (f *File) Seek(offset int64, whence int) (int64, error) {
 	// TODO(mischief): validate offset
 	switch whence {
 	case os.SEEK_SET:
-		f.offset = offset
+		f.Offset = offset
 	case os.SEEK_CUR:
-		f.offset += offset
+		f.Offset += offset
 	case os.SEEK_END:
 		//f.offset = int64(f.inode.Filesize) - offset
 		fallthrough
@@ -313,7 +313,7 @@ func (f *File) Close() error {
 	if f == nil {
 		return ErrInvalid
 	}
-	promOpenFiles.WithLabelValues(f.volume.Name).Dec()
+	promOpenFiles.WithLabelValues(f.Volume.Name).Dec()
 	return nil
 }
 
@@ -327,8 +327,8 @@ func (f *File) Truncate(size int64) error {
 		nBlocks++
 	}
 	clog.Tracef("truncate to %d %d", size, nBlocks)
-	f.blocks.Truncate(int(nBlocks), uint64(f.blkSize))
-	f.inode.Filesize = uint64(size)
+	f.Blocks.Truncate(int(nBlocks), uint64(f.blkSize))
+	f.INode.Filesize = uint64(size)
 	return nil
 }
 
@@ -345,7 +345,7 @@ func (f *File) Trim(offset, length int64) error {
 		blkFrom += 1
 	}
 	blkTo := (offset + length) / f.blkSize
-	return f.blocks.Trim(int(blkFrom), int(blkTo))
+	return f.Blocks.Trim(int(blkFrom), int(blkTo))
 }
 
 func (f *File) SyncAllWrites() (INodeRef, error) {
@@ -358,16 +358,16 @@ func (f *File) SyncAllWrites() (INodeRef, error) {
 
 func (f *File) SyncINode(ctx context.Context) (INodeRef, error) {
 	ref := f.writeINodeRef
-	blkdata, err := MarshalBlocksetToProto(f.blocks)
+	blkdata, err := MarshalBlocksetToProto(f.Blocks)
 	if err != nil {
 		clog.Error("sync: couldn't marshal proto")
 		return ZeroINode(), err
 	}
-	f.inode.Blocks = blkdata
-	if f.inode.Volume != f.volume.Id {
+	f.INode.Blocks = blkdata
+	if f.INode.Volume != f.Volume.Id {
 		panic("mismatched volume and inode volume")
 	}
-	err = f.srv.INodes.WriteINode(ctx, ref, f.inode)
+	err = f.srv.INodes.WriteINode(ctx, ref, f.INode)
 	if err != nil {
 		return ZeroINode(), err
 	}
@@ -385,5 +385,5 @@ func (f *File) SyncBlocks() error {
 }
 
 func (f *File) Size() uint64 {
-	return f.inode.Filesize
+	return f.INode.Filesize
 }

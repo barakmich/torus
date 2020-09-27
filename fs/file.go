@@ -3,34 +3,40 @@ package fs
 import (
 	"os"
 
+	"github.com/RoaringBitmap/roaring"
 	"github.com/coreos/torus"
 	"github.com/coreos/torus/blockset"
 	"github.com/coreos/torus/models"
-	"github.com/RoaringBitmap/roaring"
+	"github.com/prometheus/client_golang/prometheus"
 )
+
+var (
+	promOpenINodes = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "torus_server_open_inodes",
+		Help: "Number of open inodes reported on last update to mds",
+	}, []string{"volume"})
+)
+
+func init() {
+	prometheus.MustRegister(promOpenINodes)
+}
 
 func (f *File) Stat() (os.FileInfo, error) {
 	return FileInfo{
-		INode: f.inode,
+		INode: f.INode,
 		Path:  f.path,
-		Ref:   torus.NewINodeRef(torus.VolumeID(f.inode.Volume), torus.INodeID(f.inode.INode)),
+		Ref:   torus.NewINodeRef(torus.VolumeID(f.INode.Volume), torus.INodeID(f.INode.INode)),
 	}, nil
 }
 
 type File struct {
 	*torus.File
 	flags         int
-	path          torus.Path
+	path          Path
 	initialINodes *roaring.Bitmap
 
 	readOnly  bool
 	writeOnly bool
-}
-
-func (f *File) Write(b []byte) (n int, err error) {
-	n, err = f.WriteAt(b, f.offset)
-	f.offset += int64(n)
-	return
 }
 
 func (f *File) WriteAt(b []byte, off int64) (n int, err error) {
@@ -57,7 +63,7 @@ func (f *File) WriteAt(b []byte, off int64) (n int, err error) {
 //f.srv.removeOpenFile(c)
 //}
 
-func (f *File) Sync(mds torus.FSMetadataService) error {
+func (f *File) Sync(mds fs.FSMetadataService) error {
 	// Here there be dragons.
 	if !f.writeOpen {
 		f.updateHeldINodes(false)
@@ -129,7 +135,7 @@ func (f *File) Sync(mds torus.FSMetadataService) error {
 		// We can write a smarter merge function -- O_APPEND for example, doing the
 		// right thing, by keeping some state in the file and actually appending it.
 		// Today, it's Last Write Wins.
-		promFileChangedSyncs.WithLabelValues(f.volume.Name).Inc()
+		promFileChangedSyncs.WithLabelValues(f.Volume.Name).Inc()
 		oldINode := f.inode
 		f.inode, err = f.srv.inodes.GetINode(f.srv.getContext(), replaced)
 		if err != nil {
@@ -193,13 +199,13 @@ func (f *File) Sync(mds torus.FSMetadataService) error {
 	return nil
 }
 
-func (f *fileHandle) getLiveINodes() *roaring.Bitmap {
-	bm := f.blocks.GetLiveINodes()
-	bm.Add(uint32(f.inode.INode))
+func (f *File) getLiveINodes() *roaring.Bitmap {
+	bm := f.Blocks.GetLiveINodes()
+	bm.Add(uint32(f.INode.INode))
 	return bm
 }
 
-func (f *fileHandle) updateHeldINodes(closing bool) {
+func (f *File) updateHeldINodes(closing bool) {
 	if f.volume.Type != models.Volume_FILE {
 		return
 	}
@@ -221,9 +227,9 @@ func (f *fileHandle) updateHeldINodes(closing bool) {
 	}
 }
 
-func (f *file) Truncate(size int64) error {
-	if f.readOnly {
+func (f *File) Truncate(size int64) error {
+	if f.File.ReadOnly {
 		return os.ErrPermission
 	}
-	return f.fileHandle.Truncate(size)
+	return f.File.Truncate(size)
 }

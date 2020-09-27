@@ -17,7 +17,7 @@ type Snapshot struct {
 	INodeRef []byte
 }
 
-type blockMetadata interface {
+type BlockMetadata interface {
 	torus.MetadataService
 
 	Lock(lease int64) error
@@ -34,7 +34,7 @@ type blockMetadata interface {
 	DeleteSnapshot(name string) error
 }
 
-func createBlockMetadata(mds torus.MetadataService, name string, vid torus.VolumeID) (blockMetadata, error) {
+func createBlockMetadata(mds torus.MetadataService, name string, vid torus.VolumeID) (BlockMetadata, error) {
 	switch mds.Kind() {
 	case torus.EtcdMetadata:
 		return createBlockEtcdMetadata(mds, name, vid)

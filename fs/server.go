@@ -8,24 +8,26 @@ import (
 	"github.com/coreos/torus/models"
 )
 
-type FSServer interface {
-	torus.Server
-
+type GenericFS interface {
 	// Standard file path calls.
-	Create(Path) (File, error)
-	Open(Path) (File, error)
-	OpenFile(p Path, flag int, perm os.FileMode) (File, error)
-	OpenFileMetadata(p Path, flag int, md *models.Metadata) (File, error)
-	Rename(p Path, new Path) error
-	Link(p Path, new Path) error
-	Symlink(to string, new Path) error
-	Lstat(Path) (os.FileInfo, error)
-	Readdir(Path) ([]Path, error)
-	Remove(Path) error
-	Mkdir(Path, *models.Metadata) error
+	Create(string) (*File, error)
+	Open(string) (*File, error)
+	OpenFile(p string, flag int, perm os.FileMode) (*File, error)
+	OpenFileMetadata(p string, flag int, md *models.Metadata) (*File, error)
+	Rename(from string, to string) error
+	Link(from string, to string) error
+	Symlink(ref string, to Path) error
+	Lstat(string) (os.FileInfo, error)
+	Readdir(string) ([]string, error)
+	Remove(string) error
+	Mkdir(string, *models.Metadata) error
 
-	Chmod(name Path, mode os.FileMode) error
-	Chown(name Path, uid, gid int) error
+	Chmod(name string, mode os.FileMode) error
+	Chown(name string, uid, gid int) error
+}
+
+type FSServer struct {
+	srv *torus.Server
 }
 
 type openFileCount struct {
@@ -35,8 +37,24 @@ type openFileCount struct {
 
 type Volume struct {
 	*torus.Server
+	mds            FsMetadataService
+	volumeID       torus.VolumeID
 	openINodeRefs  map[string]map[torus.INodeID]int
 	openFileChains map[uint64]openFileCount
+}
+
+func OpenFS(srv *torus.Server) *FSServer {
+	return &FSServer{
+		srv: srv,
+	}
+}
+
+func (s *FSServer) CreateFSVol(volume *models.Volume) (*Volume, error) {
+	panic("to implement")
+}
+
+func (s *FSServer) OpenFSVol(volume *models.Volume) (*Volume, error) {
+	panic("to implement")
 }
 
 func (s *FSServer) FileEntryForPath(p torus.Path) (torus.VolumeID, *models.FileEntry, error) {

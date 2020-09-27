@@ -24,6 +24,7 @@ require (
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0
 	github.com/kardianos/osext v0.0.0-20151222153229-29ae4ffbc9a6
+	github.com/lionkov/go9p v0.0.0-20190125202718-b4200817c487
 	github.com/lpabon/godbc v0.1.2-0.20140613165803-9577782540c1
 	github.com/manucorporat/sse v0.0.0-20160126180136-ee05b128a739
 	github.com/mattn/go-colorable v0.1.7 // indirect

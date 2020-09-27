@@ -11,7 +11,7 @@ const VolumeType = "block"
 
 type BlockVolume struct {
 	srv    *torus.Server
-	mds    blockMetadata
+	mds    BlockMetadata
 	volume *models.Volume
 }
 

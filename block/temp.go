@@ -157,7 +157,7 @@ func (b *blockTempMetadata) DeleteSnapshot(name string) error {
 	return torus.ErrNotExist
 }
 
-func createBlockTempMetadata(mds torus.MetadataService, name string, vid torus.VolumeID) (blockMetadata, error) {
+func createBlockTempMetadata(mds torus.MetadataService, name string, vid torus.VolumeID) (BlockMetadata, error) {
 	if t, ok := mds.(*temp.Client); ok {
 		return &blockTempMetadata{
 			Client: t,

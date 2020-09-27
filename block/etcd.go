@@ -217,7 +217,7 @@ func (b *blockEtcd) DeleteSnapshot(name string) error {
 	return nil
 }
 
-func createBlockEtcdMetadata(mds torus.MetadataService, name string, vid torus.VolumeID) (blockMetadata, error) {
+func createBlockEtcdMetadata(mds torus.MetadataService, name string, vid torus.VolumeID) (BlockMetadata, error) {
 	if e, ok := mds.(*etcd.Etcd); ok {
 		return &blockEtcd{
 			Etcd: e,

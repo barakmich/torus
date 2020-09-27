@@ -6,21 +6,45 @@ import (
 	"os"
 	"time"
 
-	"github.com/coreos/torus/models"
-	"github.com/coreos/pkg/capnslog"
+	etcdv3 "github.com/coreos/etcd/clientv3"
+
 	"github.com/RoaringBitmap/roaring"
+	"github.com/coreos/pkg/capnslog"
+	"github.com/coreos/torus"
+	"github.com/coreos/torus/metadata/etcd"
+	"github.com/coreos/torus/models"
+	"golang.org/x/net/context"
 )
 
 const (
 	chainPageSize = 1000
 )
 
-type etcd struct {
+type fsEtcd struct {
+	*etcd.Etcd
+	name string
+	vid  torus.VolumeID
 }
 
-func (c *etcd) createFSVol(volume *models.Volume) error {
-	key := torus.Path{Volume: volume.Name, Path: "/"}
-	new, err := c.atomicModifyKey(mkKey("meta", "volumeminter"), bytesAddOne)
+func (c *fsEtcd) getContext() context.Context {
+	return context.TODO()
+}
+
+func keyNotExists(key string) etcdv3.Cmp {
+	return etcdv3.Compare(etcdv3.Version(key), "=", 0)
+}
+
+func keyExists(key string) etcdv3.Cmp {
+	return etcdv3.Compare(etcdv3.Version(key), ">", 0)
+}
+
+func keyIsVersion(key string, version int64) etcdv3.Cmp {
+	return etcdv3.Compare(etcdv3.Version(key), "=", version)
+}
+
+func (c *fsEtcd) CreateFSVol(volume *models.Volume) error {
+	key := Path{Volume: volume.Name, Path: "/"}
+	new, err := c.AtomicModifyKey([]byte(etcd.MkKey("meta", "volumeminter")), etcd.BytesAddOne)
 	volume.Id = new.(uint64)
 	if err != nil {
 		return err
@@ -30,20 +54,20 @@ func (c *etcd) createFSVol(volume *models.Volume) error {
 	if err != nil {
 		return err
 	}
-	do := tx().If(
-		keyNotExists(mkKey("volumes", volume.Name)),
+	do := c.Etcd.Client.Txn(c.getContext()).If(
+		keyNotExists(etcd.MkKey("volumes", volume.Name)),
 	).Then(
-		setKey(mkKey("volumes", volume.Name), uint64ToBytes(volume.Id)),
-		setKey(mkKey("volumeid", uint64ToHex(volume.Id)), vbytes),
-		setKey(mkKey("volumemeta", "inode", uint64ToHex(volume.Id)), uint64ToBytes(1)),
-		setKey(mkKey("volumemeta", "deadmap", uint64ToHex(volume.Id)), roaringToBytes(roaring.NewBitmap())),
-		setKey(mkKey("dirs", key.Key()), newDirProto(&models.Metadata{
+		etcdv3.OpPut(etcd.MkKey("volumes", volume.Name), string(etcd.Uint64ToBytes(volume.Id))),
+		etcdv3.OpPut(etcd.MkKey("volumeid", etcd.Uint64ToHex(volume.Id)), string(vbytes)),
+		etcdv3.OpPut(etcd.MkKey("volumemeta", "inode", etcd.Uint64ToHex(volume.Id)), string(etcd.Uint64ToBytes(1))),
+		etcdv3.OpPut(etcd.MkKey("volumemeta", "deadmap", etcd.Uint64ToHex(volume.Id)), string(roaringToBytes(roaring.NewBitmap()))),
+		etcdv3.OpPut(etcd.MkKey("dirs", key.Key()), string(newDirProto(&models.Metadata{
 			Ctime: t,
 			Mtime: t,
 			Mode:  uint32(os.ModeDir | 0755),
-		})),
-	).Tx()
-	resp, err := c.etcd.kv.Txn(c.getContext(), do)
+		}))),
+	)
+	resp, err := do.Commit()
 	if err != nil {
 		return err
 	}
@@ -53,18 +77,18 @@ func (c *etcd) createFSVol(volume *models.Volume) error {
 	return nil
 }
 
-func (c *etcdCtx) Mkdir(path torus.Path, md *models.Metadata) error {
-	promOps.WithLabelValues("mkdir").Inc()
+func (c *fsEtcd) Mkdir(path Path, md *models.Metadata) error {
+	// promOps.WithLabelValues("mkdir").Inc()
 	parent, ok := path.Parent()
 	if !ok {
 		return errors.New("etcd: not a directory")
 	}
-	tx := tx().If(
-		keyExists(mkKey("dirs", parent.Key())),
+	do := c.Etcd.Client.Txn(c.getContext()).If(
+		keyExists(etcd.MkKey("dirs", parent.Key())),
 	).Then(
-		setKey(mkKey("dirs", path.Key()), newDirProto(md)),
-	).Tx()
-	resp, err := c.etcd.kv.Txn(c.getContext(), tx)
+		etcdv3.OpPut(etcd.MkKey("dirs", path.Key()), string(newDirProto(md))),
+	)
+	resp, err := do.Commit()
 	if err != nil {
 		return err
 	}
@@ -74,10 +98,10 @@ func (c *etcdCtx) Mkdir(path torus.Path, md *models.Metadata) error {
 	return nil
 }
 
-func (c *etcdCtx) ChangeDirMetadata(p torus.Path, md *models.Metadata) error {
-	promOps.WithLabelValues("change-dir-metadata").Inc()
-	_, err := c.atomicModifyKey(
-		mkKey("dirs", p.Key()),
+func (c *fsEtcd) ChangeDirMetadata(p Path, md *models.Metadata) error {
+	// promOps.WithLabelValues("change-dir-metadata").Inc()
+	_, err := c.AtomicModifyKey(
+		[]byte(etcd.MkKey("dirs", p.Key())),
 		func(in []byte) ([]byte, interface{}, error) {
 			dir := &models.Directory{}
 			dir.Unmarshal(in)
@@ -88,8 +112,8 @@ func (c *etcdCtx) ChangeDirMetadata(p torus.Path, md *models.Metadata) error {
 	return err
 }
 
-func (c *etcdCtx) Rmdir(path torus.Path) error {
-	promOps.WithLabelValues("rmdir").Inc()
+func (c *fsEtcd) Rmdir(path Path) error {
+	// promOps.WithLabelValues("rmdir").Inc()
 	if !path.IsDir() {
 		clog.Error("rmdir: not a directory", path)
 		return errors.New("etcd: not a directory")
@@ -107,12 +131,12 @@ func (c *etcdCtx) Rmdir(path torus.Path) error {
 		clog.Error("rmdir: dir not empty", dir, subdirs)
 		return errors.New("etcd: directory not empty")
 	}
-	tx := tx().If(
-		keyIsVersion(mkKey("dirs", path.Key()), version),
+	do := c.Etcd.Client.Txn(c.getContext()).If(
+		keyIsVersion(etcd.MkKey("dirs", path.Key()), version),
 	).Then(
-		deleteKey(mkKey("dirs", path.Key())),
-	).Tx()
-	resp, err := c.etcd.kv.Txn(c.getContext(), tx)
+		etcdv3.OpDelete(etcd.MkKey("dirs", path.Key())),
+	)
+	resp, err := do.Commit()
 	if !resp.Succeeded {
 		clog.Error("rmdir: txn failed")
 		return os.ErrInvalid
@@ -120,21 +144,21 @@ func (c *etcdCtx) Rmdir(path torus.Path) error {
 	return nil
 }
 
-func (c *etcdCtx) Getdir(p torus.Path) (*models.Directory, []torus.Path, error) {
+func (c *fsEtcd) Getdir(p Path) (*models.Directory, []Path, error) {
 	dir, paths, _, err := c.getdir(p)
 	return dir, paths, err
 }
 
-func (c *etcdCtx) getdir(p torus.Path) (*models.Directory, []torus.Path, int64, error) {
-	promOps.WithLabelValues("getdir").Inc()
+func (c *fsEtcd) getdir(p Path) (*models.Directory, []Path, int64, error) {
+	// promOps.WithLabelValues("getdir").Inc()
 	clog.Tracef("getdir: %s", p.Key())
-	tx := tx().If(
-		keyExists(mkKey("dirs", p.Key())),
+	do := c.Etcd.Client.Txn(c.getContext()).If(
+		keyExists(etcd.MkKey("dirs", p.Key())),
 	).Then(
-		getKey(mkKey("dirs", p.Key())),
-		getPrefix(mkKey("dirs", p.SubdirsPrefix())),
-	).Tx()
-	resp, err := c.etcd.kv.Txn(c.getContext(), tx)
+		etcdv3.OpGet(etcd.MkKey("dirs", p.Key())),
+		etcdv3.OpGet(etcd.MkKey("dirs", p.SubdirsPrefix()), etcdv3.WithPrefix()),
+	)
+	resp, err := do.Commit()
 	if err != nil {
 		return nil, nil, 0, err
 	}
@@ -147,10 +171,10 @@ func (c *etcdCtx) getdir(p torus.Path) (*models.Directory, []torus.Path, int64, 
 	if err != nil {
 		return nil, nil, 0, err
 	}
-	var outpaths []torus.Path
+	var outpaths []Path
 	for _, kv := range resp.Responses[1].GetResponseRange().Kvs {
 		s := bytes.SplitN(kv.Key, []byte{':'}, 3)
-		outpaths = append(outpaths, torus.Path{
+		outpaths = append(outpaths, Path{
 			Volume: p.Volume,
 			Path:   string(s[2]) + "/",
 		})
@@ -159,13 +183,13 @@ func (c *etcdCtx) getdir(p torus.Path) (*models.Directory, []torus.Path, int64, 
 	return outdir, outpaths, dirkv.Version, nil
 }
 
-func (c *etcdCtx) SetFileEntry(p torus.Path, ent *models.FileEntry) error {
-	promOps.WithLabelValues("set-file-entry").Inc()
-	_, err := c.atomicModifyKey(mkKey("dirs", p.Key()), trySetFileEntry(p, ent))
+func (c *fsEtcd) SetFileEntry(p Path, ent *models.FileEntry) error {
+	// promOps.WithLabelValues("set-file-entry").Inc()
+	_, err := c.AtomicModifyKey([]byte(etcd.MkKey("dirs", p.Key())), trySetFileEntry(p, ent))
 	return err
 }
 
-func trySetFileEntry(p torus.Path, ent *models.FileEntry) AtomicModifyFunc {
+func trySetFileEntry(p Path, ent *models.FileEntry) etcd.AtomicModifyFunc {
 	return func(in []byte) ([]byte, interface{}, error) {
 		dir := &models.Directory{}
 		err := dir.Unmarshal(in)
@@ -189,10 +213,12 @@ func trySetFileEntry(p torus.Path, ent *models.FileEntry) AtomicModifyFunc {
 	}
 }
 
-func (c *etcdCtx) GetChainINode(base torus.INodeRef) (torus.INodeRef, error) {
-	pageID := uint64ToHex(uint64(base.INode / chainPageSize))
-	volume := uint64ToHex(uint64(base.Volume()))
-	resp, err := c.etcd.kv.Range(c.getContext(), getKey(mkKey("volumemeta", "chain", volume, pageID)))
+func (c *fsEtcd) GetChainINode(base torus.INodeRef) (torus.INodeRef, error) {
+	pageID := etcd.Uint64ToHex(uint64(base.INode / chainPageSize))
+	volume := etcd.Uint64ToHex(uint64(base.Volume()))
+	rangekey := etcd.MkKey("volumemeta", "chain", volume, pageID)
+	resp, err := c.Etcd.Client.Get(c.getContext(), rangekey, etcdv3.WithPrefix())
+
 	if len(resp.Kvs) == 0 {
 		return torus.INodeRef{}, nil
 	}
@@ -208,11 +234,11 @@ func (c *etcdCtx) GetChainINode(base torus.INodeRef) (torus.INodeRef, error) {
 	return torus.NewINodeRef(base.Volume(), torus.INodeID(v)), nil
 }
 
-func (c *etcdCtx) SetChainINode(base torus.INodeRef, was torus.INodeRef, new torus.INodeRef) error {
-	promOps.WithLabelValues("set-chain-inode").Inc()
-	pageID := uint64ToHex(uint64(base.INode / chainPageSize))
-	volume := uint64ToHex(uint64(base.Volume()))
-	_, err := c.atomicModifyKey(mkKey("volumemeta", "chain", volume, pageID), func(b []byte) ([]byte, interface{}, error) {
+func (c *fsEtcd) SetChainINode(base torus.INodeRef, was torus.INodeRef, new torus.INodeRef) error {
+	// promOps.WithLabelValues("set-chain-inode").Inc()
+	pageID := etcd.Uint64ToHex(uint64(base.INode / chainPageSize))
+	volume := etcd.Uint64ToHex(uint64(base.Volume()))
+	_, err := c.AtomicModifyKey([]byte(etcd.MkKey("volumemeta", "chain", volume, pageID)), func(b []byte) ([]byte, interface{}, error) {
 		set := &models.FileChainSet{}
 		if len(b) == 0 {
 			set.Chains = make(map[uint64]uint64)
@@ -240,14 +266,14 @@ func (c *etcdCtx) SetChainINode(base torus.INodeRef, was torus.INodeRef, new tor
 	return err
 }
 
-func (c *etcdCtx) GetVolumeLiveness(volumeID torus.VolumeID) (*roaring.Bitmap, []*roaring.Bitmap, error) {
-	promOps.WithLabelValues("get-volume-liveness").Inc()
-	volume := uint64ToHex(uint64(volumeID))
-	tx := tx().Do(
-		getKey(mkKey("volumemeta", "deadmap", volume)),
-		getPrefix(mkKey("volumemeta", "open", volume)),
-	).Tx()
-	resp, err := c.etcd.kv.Txn(c.getContext(), tx)
+func (c *fsEtcd) GetVolumeLiveness(volumeID torus.VolumeID) (*roaring.Bitmap, []*roaring.Bitmap, error) {
+	//promOps.WithLabelValues("get-volume-liveness").Inc()
+	volume := etcd.Uint64ToHex(uint64(volumeID))
+	do := c.Etcd.Client.Txn(c.getContext()).Then(
+		etcdv3.OpGet(etcd.MkKey("volumemeta", "deadmap", volume)),
+		etcdv3.OpGet(etcd.MkKey("volumemeta", "open", volume), etcdv3.WithPrefix()),
+	)
+	resp, err := do.Commit()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -259,34 +285,33 @@ func (c *etcdCtx) GetVolumeLiveness(volumeID torus.VolumeID) (*roaring.Bitmap, [
 	return deadmap, l, nil
 }
 
-func (c *etcdCtx) ClaimVolumeINodes(lease int64, volumeID torus.VolumeID, inodes *roaring.Bitmap) error {
+func (c *fsEtcd) ClaimVolumeINodes(lease int64, volumeID torus.VolumeID, inodes *roaring.Bitmap) error {
 	if lease == 0 {
 		return errors.New("no lease")
 	}
-	promOps.WithLabelValues("claim-volume-inodes").Inc()
-	volume := uint64ToHex(uint64(volumeID))
-	key := mkKey("volumemeta", "open", volume, c.UUID())
+	// promOps.WithLabelValues("claim-volume-inodes").Inc()
+	volume := etcd.Uint64ToHex(uint64(volumeID))
+	key := etcd.MkKey("volumemeta", "open", volume, c.UUID())
 	if inodes == nil {
-		_, err := c.etcd.kv.DeleteRange(c.getContext(), deleteKey(key))
+		_, err := c.Etcd.Client.Delete(c.getContext(), string(key), etcdv3.WithPrefix())
 		return err
 	}
 	data := roaringToBytes(inodes)
-	_, err := c.etcd.kv.Put(c.getContext(),
-		setLeasedKey(lease, key, data),
-	)
+	_, err := c.Etcd.Client.Put(c.getContext(),
+		key, string(data), etcdv3.WithLease(etcdv3.LeaseID(lease)))
 	return err
 }
 
-func (c *etcdCtx) ModifyDeadMap(volumeID torus.VolumeID, live *roaring.Bitmap, dead *roaring.Bitmap) error {
-	promOps.WithLabelValues("modify-deadmap").Inc()
+func (c *fsEtcd) ModifyDeadMap(volumeID torus.VolumeID, live *roaring.Bitmap, dead *roaring.Bitmap) error {
+	// promOps.WithLabelValues("modify-deadmap").Inc()
 	if clog.LevelAt(capnslog.DEBUG) {
 		newdead := roaring.AndNot(dead, live)
 		clog.Tracef("killing %s", newdead.String())
 		revive := roaring.AndNot(live, dead)
 		clog.Tracef("reviving %s", revive.String())
 	}
-	volume := uint64ToHex(uint64(volumeID))
-	_, err := c.atomicModifyKey(mkKey("volumemeta", "deadmap", volume), func(b []byte) ([]byte, interface{}, error) {
+	volume := etcd.Uint64ToHex(uint64(volumeID))
+	_, err := c.AtomicModifyKey([]byte(etcd.MkKey("volumemeta", "deadmap", volume)), func(b []byte) ([]byte, interface{}, error) {
 		bm := bytesToRoaring(b)
 		bm.Or(dead)
 		bm.AndNot(live)
@@ -295,9 +320,10 @@ func (c *etcdCtx) ModifyDeadMap(volumeID torus.VolumeID, live *roaring.Bitmap, d
 	return err
 }
 
-func (c *etcdCtx) GetINodeChains(vid torus.VolumeID) ([]*models.FileChainSet, error) {
-	volume := uint64ToHex(uint64(vid))
-	resp, err := c.etcd.kv.Range(c.getContext(), getPrefix(mkKey("volumemeta", "chain", volume)))
+func (c *fsEtcd) GetINodeChains(vid torus.VolumeID) ([]*models.FileChainSet, error) {
+	volume := etcd.Uint64ToHex(uint64(vid))
+	rangekey := etcd.MkKey("volumemeta", "chain", volume)
+	resp, err := c.Etcd.Client.Get(c.getContext(), rangekey, etcdv3.WithPrefix())
 	if err != nil {
 		return nil, err
 	}

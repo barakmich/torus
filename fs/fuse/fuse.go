@@ -10,12 +10,10 @@ import (
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
-	"github.com/coreos/torus/models"
-	"github.com/coreos/torus/server"
 	"github.com/coreos/pkg/capnslog"
+	torusfs "github.com/coreos/torus/fs"
+	"github.com/coreos/torus/models"
 	"golang.org/x/net/context"
-
-	"github.com/coreos/torus"
 )
 
 var (
@@ -25,7 +23,7 @@ var (
 
 var fuseSrv *fs.Server
 
-func MustMount(mountpoint, volume string, srv torus.FSServer, rootMount bool) {
+func MustMount(mountpoint, volume string, srv torusfs.FSServer, rootMount bool) {
 	options := []fuse.MountOption{
 		fuse.FSName("torus"),
 		fuse.Subtype("torusfs"),
@@ -67,36 +65,36 @@ func MustMount(mountpoint, volume string, srv torus.FSServer, rootMount bool) {
 }
 
 type FS struct {
-	dfs    torus.FSServer
+	dfs    torusfs.FSServer
 	volume string
 }
 
 func (fs FS) Root() (fs.Node, error) {
 	return &Dir{
 		dfs:  fs.dfs,
-		path: torus.Path{fs.volume, "/"},
+		path: torusfs.Path{fs.volume, "/"},
 	}, nil
 }
 
 type Dir struct {
-	dfs    torus.FSServer
-	path   torus.Path
+	dfs    torusfs.FSServer
+	path   torusfs.Path
 	handle *DirHandle
 }
 
 type DirHandle struct {
-	dfs  torus.FSServer
-	path torus.Path
+	dfs  torusfs.FSServer
+	path torusfs.Path
 	dir  *Dir
 }
 
 var (
 	_         fs.HandleReadDirAller = DirHandle{}
 	cacheMut  sync.Mutex
-	dirExists = make(map[torus.Path]error)
+	dirExists = make(map[torusfs.Path]error)
 )
 
-func readDirExists(dfs torus.FSServer, p torus.Path) ([]torus.Path, error) {
+func readDirExists(dfs torusfs.FSServer, p torusfs.Path) ([]torusfs.Path, error) {
 	cacheMut.Lock()
 	defer cacheMut.Unlock()
 	if v, ok := dirExists[p]; ok {
@@ -117,7 +115,7 @@ func (d *Dir) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.St
 	return nil
 }
 
-func (d *Dir) ChangePath(p torus.Path) {
+func (d *Dir) ChangePath(p torusfs.Path) {
 	d.path = p
 }
 
@@ -375,14 +373,14 @@ func (d Dir) Fsync(ctx context.Context, req *fuse.FsyncRequest) error {
 }
 
 type File struct {
-	dfs  torus.FSServer
-	path torus.Path
+	dfs  torusfs.FSServer
+	path torusfs.Path
 }
 
 type FileHandle struct {
-	dfs  torus.FSServer
-	path torus.Path
-	file torus.File
+	dfs  torusfs.FSServer
+	path torusfs.Path
+	file torusfs.File
 	node *File
 }
 
@@ -392,12 +390,12 @@ var (
 	_ fs.HandleReader = FileHandle{}
 
 	syncMut     sync.Mutex
-	syncRefs    = make(map[fuse.HandleID]torus.File)
-	pathRefs    = make(map[torus.Path]pathChanger)
-	lstatExists = make(map[torus.Path]error)
+	syncRefs    = make(map[fuse.HandleID]torusfs.File)
+	pathRefs    = make(map[torusfs.Path]pathChanger)
+	lstatExists = make(map[torusfs.Path]error)
 )
 
-func readLstatExists(dfs torus.FSServer, p torus.Path) (os.FileInfo, error) {
+func readLstatExists(dfs torusfs.FSServer, p torusfs.Path) (os.FileInfo, error) {
 	cacheMut.Lock()
 	defer cacheMut.Unlock()
 	if v, ok := lstatExists[p]; ok {
@@ -410,10 +408,10 @@ func readLstatExists(dfs torus.FSServer, p torus.Path) (os.FileInfo, error) {
 
 type pathChanger interface {
 	fs.Node
-	ChangePath(p torus.Path)
+	ChangePath(p torusfs.Path)
 }
 
-func (f *File) ChangePath(p torus.Path) {
+func (f *File) ChangePath(p torusfs.Path) {
 	f.path = p
 }
 
@@ -442,13 +440,13 @@ func (f File) Setattr(ctx context.Context, req *fuse.SetattrRequest, resp *fuse.
 	return setattrHelper(ctx, req, resp, f.path, f.dfs)
 }
 
-func setattrHelper(ctx context.Context, req *fuse.SetattrRequest, resp *fuse.SetattrResponse, p torus.Path, srv torus.FSServer) error {
+func setattrHelper(ctx context.Context, req *fuse.SetattrRequest, resp *fuse.SetattrResponse, p torusfs.Path, srv torusfs.FSServer) error {
 	fileInfo, err := srv.Lstat(p)
 	if err != nil {
 		clog.Error("setattr:", p, err)
 		return err
 	}
-	fi := fileInfo.(server.FileInfo)
+	fi := fileInfo.(torusfs.FileInfo)
 	if req.Valid.Mode() {
 		if fi.Symlink != "" {
 			return errors.New("can't modify symlink")
@@ -500,7 +498,7 @@ func (f File) Readlink(ctx context.Context, req *fuse.ReadlinkRequest) (string, 
 	if err != nil {
 		return "", err
 	}
-	fi := fileInfo.(server.FileInfo)
+	fi := fileInfo.(torusfs.FileInfo)
 	return fi.Symlink, nil
 }
 

@@ -15,11 +15,11 @@ var (
 	mlog = capnslog.NewPackageLogger("github.com/coreos/torus", "map")
 )
 
-func (s *FSServer) Create(path torus.Path) (torus.File, error) {
+func (s *FSServer) Create(path Path) (*File, error) {
 	return s.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 }
 
-func (s *FSServer) create(path torus.Path, flag int, md *models.Metadata) (f torus.File, err error) {
+func (s *FSServer) create(path Path, flag int, md *models.Metadata) (f torus.File, err error) {
 	// Truncate the file if it already exists. This is equivalent to creating
 	// a new (empty) inode with the path that we're going to overwrite later.
 	rdOnly, wrOnly, err := onlys(flag)
@@ -76,22 +76,22 @@ func (s *FSServer) create(path torus.Path, flag int, md *models.Metadata) (f tor
 	return file, nil
 }
 
-func (s *FSServer) Open(p torus.Path) (torus.File, error) {
+func (s *FSServer) Open(p Path) (torus.File, error) {
 	return s.OpenFile(p, os.O_RDONLY, 0)
 }
 
-func (s *FSServer) OpenFile(p torus.Path, flag int, perm os.FileMode) (torus.File, error) {
+func (s *FSServer) OpenFile(p Path, flag int, perm os.FileMode) (torus.File, error) {
 	clog.Debugf("opening file %s", p)
 	return s.openFile(p, flag, &models.Metadata{
 		Mode: uint32(perm),
 	})
 }
 
-func (s *FSServer) OpenFileMetadata(p torus.Path, flag int, md *models.Metadata) (torus.File, error) {
+func (s *FSServer) OpenFileMetadata(p Path, flag int, md *models.Metadata) (torus.File, error) {
 	return s.openFile(p, flag, md)
 }
 
-func (s *FSServer) openFile(p torus.Path, flag int, md *models.Metadata) (torus.File, error) {
+func (s *FSServer) openFile(p Path, flag int, md *models.Metadata) (torus.File, error) {
 	vol, err := s.mds.GetVolume(p.Volume)
 	if err != nil {
 		return nil, err
@@ -153,7 +153,7 @@ func onlys(flag int) (rdOnly bool, wrOnly bool, err error) {
 	}
 }
 
-func (s *FSServer) newFile(path torus.Path, flag int, inode *models.INode) (torus.File, error) {
+func (s *FSServer) newFile(path Path, flag int, inode *models.INode) (torus.File, error) {
 	rdOnly, wrOnly, err := onlys(flag)
 	if err != nil {
 		return nil, err
